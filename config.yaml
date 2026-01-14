@@ -1,0 +1,83 @@
+association:
+  analysis_window: 500
+  max_len: 2
+  min_confidence: 0.2
+  min_lift: 1.1
+  min_support: 0.05
+  ttl_hours: 24
+autotune:
+  enabled: true
+  period: 20
+  trials: 1
+backtest:
+  periods: 30
+  window_size: 10
+market:
+  regime_thresholds:
+    chaos_entropy: 6.1
+    chaos_volatility: 0.07
+    stable_entropy: 5.8
+    stable_volatility: 0.04
+    trend_slope: 2.5
+ml:
+  arima_params:
+    d: 1
+    p: 2
+    q: 1
+    window: 50
+  lgb_params:
+    class_weight: balanced
+    learning_rate: 0.07831791532265676
+    max_depth: 6
+    n_estimators: 200
+    random_state: 42
+    subsample: 0.8
+    verbosity: -1
+  mlp_params:
+    activation: relu
+    alpha: 0.0001
+    batch_size: auto
+    early_stopping: true
+    hidden_layer_sizes:
+    - 128
+    - 64
+    - 32
+    learning_rate: adaptive
+    max_iter: 500
+    random_state: 42
+    solver: adam
+  rf_global_params:
+    bootstrap: true
+    class_weight: balanced
+    max_depth: 15
+    max_features: sqrt
+    min_samples_leaf: 2
+    min_samples_split: 4
+    n_estimators: 300
+    n_jobs: -1
+    random_state: 42
+  tcn_params:
+    dropout: 0.2
+    epochs: 15
+    kernel_size: 3
+    learning_rate: 0.0007499114173284197
+    num_channels:
+    - 64
+    - 64
+    - 32
+    seq_len: 30
+  xgb_params:
+    colsample_bytree: 0.8
+    learning_rate: 0.07944782394203334
+    max_depth: 6
+    n_estimators: 200
+    random_state: 42
+    scale_pos_weight: 3.0
+    subsample: 0.8
+    verbosity: 0
+prediction:
+  fusion_weights:
+    arima: 0.06531860904652002
+    gbdt: 0.12232257853688007
+    rf_mlp: 0.6088270895090326
+    tcn: 0.20353172290756724
