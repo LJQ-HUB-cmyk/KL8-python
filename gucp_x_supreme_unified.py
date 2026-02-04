@@ -11,8 +11,8 @@ GUCP-X 全维一体化量化系统 (Supreme Unified System)
 5. 滚动回测自动化盈亏对账
 6. 首席科学家级专业研报生成
 """
-"""
-# [Supreme Fix] 强制重定向标准输出为 UTF-8，防止控制台乱码
+
+# [Supreme Fix] 强制重定向标准输出为 UTF-8,防止控制台乱码
 import sys
 import io
 if sys.stdout.encoding != 'utf-8':
@@ -31,6 +31,7 @@ import shutil
 import math
 import random
 import bisect
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any, Union
@@ -74,8 +75,7 @@ class SupremeConfig:
     TOTAL_NUMBERS = 80
     
     # 路径配置
-    # 路径配置
-    # [Supreme Fix] 使用动态相对路径，增强环境适应性
+    # [Supreme Fix] 使用动态相对路径,增强环境适应性
     BASE_DIR = Path(__file__).resolve().parent
     DATA_FILE = BASE_DIR / "data" / "kl8_history_final.txt"
     ORDER_FILE = BASE_DIR / "data" / "快8历史出球顺序.txt"
@@ -92,7 +92,7 @@ class SupremeConfig:
         'n_estimators': 300,
         'max_depth': 15,
         'min_samples_split': 4,
-        'n_jobs': 2, # [Supreme Fix] Windows 安全模式，避免 -1 导致的死锁
+        'n_jobs': 2,  # [Supreme Fix] Windows 安全模式,避免 -1 导致的死锁
         'random_state': 42,
         'class_weight': 'balanced'
     }
@@ -133,14 +133,14 @@ class SupremeConfig:
 
     # GBDT 参数 (XGBoost & LightGBM)
     XGB_PARAMS = {
-        'n_estimators': 500, # 增加基础树量，靠早停控制
+        'n_estimators': 500,  # 增加基础树量,靠早停控制
         'max_depth': 6,
         'learning_rate': 0.05,
         'subsample': 0.8,
         'colsample_bytree': 0.8,
         'random_state': 42,
         'verbosity': 0,
-        'scale_pos_weight': 3.0 # 处理 1:3 的样本不平衡
+        'scale_pos_weight': 3.0  # 处理 1:3 的样本不平衡
     }
     
     LGB_PARAMS = {
@@ -150,7 +150,7 @@ class SupremeConfig:
         'subsample': 0.8,
         'random_state': 42,
         'verbosity': -1,
-        'class_weight': 'balanced' # 自动处理不平衡
+        'class_weight': 'balanced'  # 自动处理不平衡
     }
 
     # 关联规则 & 跟随强度参数
@@ -199,7 +199,8 @@ class SupremeConfig:
         try:
             with open(SupremeConfig.CONFIG_FILE, 'r', encoding='utf-8') as f:
                 cfg = yaml.safe_load(f)
-                if not cfg: return
+                if not cfg:
+                    return
                 
                 # 1. 机器学习参数 (RF, MLP, TCN, ARIMA, GBDT)
                 ml_cfg = cfg.get('ml', {})
@@ -254,7 +255,7 @@ class SupremeConfig:
                 
                 logging.info("⚙️ 外部配置文件 config.yaml 加载成功 (全参数同步)")
         except Exception as e:
-            logging.warning(f"⚠️ 配置文件加载失败，使用内置默认值: {e}")
+            logging.warning(f"⚠️ 配置文件加载失败,使用内置默认值: {e} ")
 
     @staticmethod
     def save_config():
@@ -294,9 +295,9 @@ class SupremeConfig:
             
             with open(SupremeConfig.CONFIG_FILE, 'w', encoding='utf-8') as f:
                 yaml.dump(cfg_data, f, allow_unicode=True, default_flow_style=False)
-            logging.info(f"💾 最佳参数已持久化至 {SupremeConfig.CONFIG_FILE.name}")
+            logging.info(f"💾 最佳参数已持久化至 {SupremeConfig.CONFIG_FILE.name} ")
         except Exception as e:
-            logging.error(f"❌ 配置文件保存失败: {e}")
+            logging.error(f"❌ 配置文件保存失败: {e} ")
 
     @staticmethod
     def init_environment():
@@ -324,9 +325,9 @@ class SupremeConfig:
         # 禁用未来警告
         warnings.filterwarnings('ignore')
         
-        # 中文支持（Matplotlib）
-        plt.rcParams['font.sans-serif'] = ['SimHei'] # Windows 常用中文字体
-        plt.rcParams['axes.unicode_minus'] = False # 解决负号显示问题
+        # 中文支持(Matplotlib)
+        plt.rcParams['font.sans-serif'] = ['SimHei']  # Windows 常用中文字体
+        plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 # ==========================================
 # 1. 物理场引擎 (Physics Engine)
@@ -338,7 +339,8 @@ class PhysicsEngine:
     @staticmethod
     def calculate_hurst(series: np.ndarray) -> float:
         """计算 R/S Hurst 指数以衡量时间序列的记忆性"""
-        if len(series) < 20: return 0.5
+        if len(series) < 20:
+            return 0.5
         
         try:
             # 简化版 R/S 分析
@@ -351,18 +353,20 @@ class PhysicsEngine:
             r = np.max(y) - np.min(y)
             # 计算标准差 S
             s = np.std(vals)
-            if s == 0: return 0.5
+            if s == 0:
+                return 0.5
             # Hurst 估计 (简单近似)
             hurst = math.log(r / s) / math.log(n)
             return np.clip(hurst, 0.0, 1.0)
-        except:
+        except Exception:
             return 0.5
 
     @staticmethod
     def calculate_metrics(history_subset: List[List[int]]) -> List[float]:
         """对历史片段提取物理指标 [熵, 均能, 波动率, Hurst]"""
         flat = [n for row in history_subset for n in row]
-        if not flat: return [3.0, 0.5, 0.5, 0.5]
+        if not flat:
+            return [3.0, 0.5, 0.5, 0.5]
         
         # 1. 香农熵 (Shannon Entropy)
         counts = np.bincount(flat, minlength=81)[1:]
@@ -413,16 +417,15 @@ class DataEngine:
                 with open(core_file, 'r', encoding='utf-8-sig') as f:
                     content = f.read().strip()
                     if content:
-                        # 兼容空格、逗号或短横线分隔
-                        import re
+                        # 兼容空格, 逗号或短横线分隔
                         nums = [int(n) for n in re.split(r'[,\s\-]+', content) if n]
                         self.core_points = sorted(list(set(nums)))
-                        self.logger.info(f"✅ 已加载最新核心点位 ({latest_dir.name}): {self.core_points}")
+                        self.logger.info(f"✅ 已加载最新核心点位 ({latest_dir.name}): {self.core_points} ")
         except Exception as e:
-            self.logger.warning(f"⚠️ 核心点位加载失败: {e}")
+            self.logger.warning(f"⚠️ 核心点位加载失败: {e} ")
 
     def _load_data(self):
-        """混合加载标准历史与出球顺序数据，并执行严格审计"""
+        """混合加载标准历史与出球顺序数据, 并执行严格审计"""
         order_map = {}
         # A. 加载出球顺序
         if SupremeConfig.ORDER_FILE.exists():
@@ -437,7 +440,7 @@ class DataEngine:
                             nums = [int(x) for x in parts[2:22]]
                             order_map[pid] = nums
             except Exception as e:
-                self.logger.warning(f"顺序数据加载提示: {e}")
+                self.logger.warning(f"顺序数据加载提示: {e} ")
 
         # B. 加载标准数据
         temp_history = []
@@ -445,7 +448,8 @@ class DataEngine:
             try:
                 with open(SupremeConfig.DATA_FILE, 'r', encoding='utf-8') as f:
                     for line in f:
-                        if 'period:' not in line: continue
+                        if 'period:' not in line:
+                            continue
                         meta = {}
                         for chunk in line.strip().split(','):
                             if ':' in chunk:
@@ -458,7 +462,7 @@ class DataEngine:
                             sorted_nums = sorted([int(n) for n in num_str.replace('-', ' ').split()])
                             ordered_nums = order_map.get(pid, sorted_nums)
                             
-                            # 严格校验：每期必须是 20 个号码
+                            # 严格校验:每期必须是 20 个号码
                             if len(sorted_nums) == 20:
                                 temp_history.append({
                                     'period': pid,
@@ -467,7 +471,7 @@ class DataEngine:
                                     'ordered': ordered_nums
                                 })
             except Exception as e:
-                self.logger.error(f"标准数据加载异常: {e}")
+                self.logger.error(f"标准数据加载异常: {e} ")
         
         temp_history.sort(key=lambda x: x['period'])
         
@@ -479,21 +483,22 @@ class DataEngine:
             gaps = []
             for i in range(len(pids)-1):
                 if pids[i+1] - pids[i] > 1:
-                    gaps.append(f"{pids[i]}-{pids[i+1]}")
+                    gaps.append(f"{pids[i]} -{pids[i+1]} ")
             
             if gaps:
-                self.audit_log.append(f"⚠️ 发现数据缺口: {', '.join(gaps)}")
+                self.audit_log.append(f"⚠️ 发现数据缺口: {', '.join(gaps)} ")
             else:
                 self.audit_log.append("✅ 期号连续性校验通过")
             
             # 2. 重复检查
             if len(pids) != len(set(pids)):
-                self.audit_log.append("❌ 警告：存在重复期号数据")
+                self.audit_log.append("❌ 警告:存在重复期号数据")
             else:
                 self.audit_log.append("✅ 数据唯一性校验通过")
 
         self.logger.info(f"📊 数据引擎初始化完毕: 共 {len(self.history)} 期记录")
-        for log in self.audit_log: self.logger.info(f"  [审计] {log}")
+        for log in self.audit_log:
+            self.logger.info(f"  [审计] {log} ")
 
     def get_last_timestamp(self) -> float:
         """获取数据文件的最新更新时间"""
@@ -510,7 +515,8 @@ class MarketEngine:
     @staticmethod
     def calculate_entropy(history: List[Dict], window: int = 50) -> float:
         """计算香农熵 (Shannon Entropy) 以评估号码分布的混沌度"""
-        if len(history) < window: return 0.0
+        if len(history) < window:
+            return 0.0
         recent_data = history[-window:]
         flat_list = [n for d in recent_data for n in d['sorted']]
         counts = Counter(flat_list)
@@ -522,8 +528,8 @@ class MarketEngine:
 
     @staticmethod
     def analyze_regime(history: List[Dict]) -> Dict:
-        """识别盘面状态，并推荐最优窗口长度 (Adaptive Windowing)"""
-        if len(history) < 20: 
+        """识别盘面状态,并推荐最优窗口长度 (Adaptive Windowing)"""
+        if len(history) < 20:
             return {"status": "未知", "slope": 0.0, "volatility": 0.0, "entropy": 0.0, "recommended_window": 12}
         
         recent_sums = [sum(d['sorted']) for d in history[-20:]]
@@ -538,18 +544,18 @@ class MarketEngine:
         entropy = MarketEngine.calculate_entropy(history)
         
         # 判定状态与推荐窗口
-        if volatility < 0.04 and entropy < 5.8: # 熵值低表示分布集中，较稳定
+        if volatility < 0.04 and entropy < 5.8:  # 熵值低表示分布集中,较稳定
             status = "⚖️ Stable (Balanced)"
-            recommended_window = 15 # 稳定期使用长窗口，平滑噪声
+            recommended_window = 15  # 稳定期使用长窗口,平滑噪声
         elif abs(slope) > 2.5:
             status = "📈 Upward Trend" if slope > 0 else "📉 Downward Trend"
-            recommended_window = 10 # 趋势期缩短窗口，捕捉动量
-        elif volatility > 0.07 or entropy > 6.1: # 熵值高表示分布散乱，混沌
+            recommended_window = 10  # 趋势期缩短窗口,捕捉动量
+        elif volatility > 0.07 or entropy > 6.1:  # 熵值高表示分布散乱,混沌
             status = "🌪️ Volatile (Chaos)"
-            recommended_window = 8  # 混沌期使用极短窗口，快速响应变化
+            recommended_window = 8  # 混沌期使用极短窗口,快速响应变化
         else:
             status = "🔄 Mixed (Transition)"
-            recommended_window = 12 # 默认窗口
+            recommended_window = 12  # 默认窗口
             
         return {
             "status": status,
@@ -568,7 +574,7 @@ class AssociationEngine:
     def mine_rules(history: List[Dict], min_support: float = 0.05, min_confidence: float = 0.4) -> List[Dict]:
         """挖掘二阶关联规则 (Pairwise Rules)"""
         total_draws = len(history)
-        if total_draws < 100: 
+        if total_draws < 100:
             return []
         
         # 1. 计数
@@ -590,7 +596,8 @@ class AssociationEngine:
         rules = []
         for (a, b), count in pair_counts.items():
             support_ab = count / recent_total
-            if support_ab < min_support: continue
+            if support_ab < min_support:
+                continue
             
             support_a = item_counts[a] / recent_total
             support_b = item_counts[b] / recent_total
@@ -605,13 +612,13 @@ class AssociationEngine:
             
             if conf_a_b >= min_confidence or conf_b_a >= min_confidence:
                 rules.append({
-                    "pair": f"{a:02d}-{b:02d}",
+                    "pair": f"{a:02d} -{b:02d} ",
                     "support": round(support_ab, 4),
                     "conf": round(max(conf_a_b, conf_b_a), 4),
                     "lift": round(lift, 4)
                 })
         
-        # 按提升度排序，取 Top 15
+        # 按提升度排序,取 Top 15
         return sorted(rules, key=lambda x: x['lift'], reverse=True)[:15]
 
 class FollowerEngine:
@@ -621,8 +628,9 @@ class FollowerEngine:
 
     @staticmethod
     def analyze_followers(history: List[Dict], n_steps: int = 3, min_strength: float = 0.1) -> Dict[int, List[Dict]]:
-        """分析号码 A 出现后，号码 B 在未来 N 期内出现的跟随强度"""
-        if len(history) < 200: return {}
+        """分析号码 A 出现后,号码 B 在未来 N 期内出现的跟随强度"""
+        if len(history) < 200:
+            return {}
         
         recent_history = history[-800:]
         total_draws = len(recent_history)
@@ -646,7 +654,8 @@ class FollowerEngine:
         results = {}
         for a in range(1, 81):
             a_count = item_counts[a]
-            if a_count == 0: continue
+            if a_count == 0:
+                continue
             
             followers = []
             for b, count in follower_counts[a].items():
@@ -673,16 +682,16 @@ class FollowerEngine:
             
             latest_dir = max(history_dirs, key=lambda x: x.name)
             
-            # 1. 回写详细跟随规则 (原有逻辑，改为输出到 follow_stats.txt)
+            # 1. 回写详细跟随规则 (原有逻辑,改为输出到 follow_stats.txt)
             stats_file = latest_dir / "follow_stats.txt"
             with open(stats_file, 'w', encoding='utf-8') as f:
                 f.write(f"--- 核心跟随规则统计 ---\n")
-                f.write(f"更新时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                f.write(f"更新时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} \n\n")
                 for n in range(1, 81):
                     if n in follower_rules:
                         followers = follower_rules[n]
-                        f_strs = [f"{item['num']:02d}({item['strength']:.2f})" for item in followers]
-                        f.write(f"{n:02d} -> {', '.join(f_strs)}\n")
+                        f_strs = [f"{item['num']:02d} ({item['strength']:.2f})" for item in followers]
+                        f.write(f"{n:02d} -> {', '.join(f_strs)} \n")
 
             # 2. 生成频次图表 (follow_10_chart, follow_25_chart, etc.)
             windows = {
@@ -699,18 +708,18 @@ class FollowerEngine:
                 counts = Counter([n for d in subset for n in d['sorted']])
                 
                 with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(f"✅ {name} Game Chart（{len(subset)}期）优选号码列表\n")
-                    f.write(f"| 号码 | 命中次数（HITS） |\n")
+                    f.write(f"✅ {name} Game Chart({len(subset)} 期)优选号码列表\n")
+                    f.write(f"| 号码 | 命中次数(HITS) |\n")
                     f.write(f"| :---: | :---: |\n")
                     # 按频次从高到低排序
                     for n, count in counts.most_common(80):
-                        # 模仿原有格式，高频号加星号
+                        # 模仿原有格式,高频号加星号
                         star = "*" if count >= (len(subset) * 0.3) else ""
                         f.write(f"| {n:02d}{star} | {count} |\n")
             
-            logging.info(f"✅ 跟随与频次统计已同步至 {latest_dir.name}")
+            logging.info(f"✅ 跟随与频次统计已同步至 {latest_dir.name} ")
         except Exception as e:
-            logging.warning(f"⚠️ 统计回写失败: {e}")
+            logging.warning(f"⚠️ 统计回写失败: {e} ")
 
 class TCNBlock(nn.Module):
     """TCN 残差块: 扩张因果卷积"""
@@ -757,7 +766,7 @@ class TCNEngine:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = None
         self.model_path = SupremeConfig.CACHE_DIR / "global_tcn.pth"
-        self.seq_len = 30 # 默认观察最近 30 期
+        self.seq_len = 30  # 默认观察最近 30 期
 
     def prepare_data(self, history: List[Dict]):
         X, y = [], []
@@ -766,12 +775,14 @@ class TCNEngine:
             seq = []
             for j in range(i - self.seq_len, i):
                 vec = np.zeros(80)
-                for n in history[j]['sorted']: vec[n-1] = 1
+                for n in history[j]['sorted']:
+                    vec[n-1] = 1
                 seq.append(vec)
             X.append(seq)
             
             target = np.zeros(80)
-            for n in history[i]['sorted']: target[n-1] = 1
+            for n in history[i]['sorted']:
+                target[n-1] = 1
             y.append(target)
         return torch.FloatTensor(np.array(X)), torch.FloatTensor(np.array(y))
 
@@ -786,7 +797,8 @@ class TCNEngine:
                 self.model.load_state_dict(torch.load(model_path, map_location=self.device))
                 self.logger.info(f"✅ 已加载 Stream D: TCN Network ({mode})")
                 return
-            except: pass
+            except Exception:
+                pass
 
         self.logger.info(f"🧠 正在训练 Stream D: TCN Neural Network ({mode})...")
         
@@ -852,7 +864,8 @@ class TCNEngine:
         self.logger.info("🚀 TCN 引擎重训完成 (含早停与验证)")
 
     def predict(self, history: List[Dict]) -> Dict[int, float]:
-        if not self.model: return {i+1: 0.0 for i in range(80)}
+        if not self.model:
+            return {i+1: 0.0 for i in range(80)}
         
         self.model.eval()
         with torch.no_grad():
@@ -860,7 +873,8 @@ class TCNEngine:
             recent = history[-self.seq_len:]
             for d in recent:
                 vec = np.zeros(80)
-                for n in d['sorted']: vec[n-1] = 1
+                for n in d['sorted']:
+                    vec[n-1] = 1
                 seq.append(vec)
             
             x = torch.FloatTensor(np.array([seq])).to(self.device)
@@ -874,13 +888,14 @@ class ARIMAEngine:
 
     def predict(self, history: List[Dict]) -> Dict[int, float]:
         """对 80 个号码分别建立 ARIMA 模型进行预测"""
-        if len(history) < 50: return {i: 0.0 for i in range(1, 81)}
+        if len(history) < 50:
+            return {i: 0.0 for i in range(1, 81)}
         
         recent_window = history[-SupremeConfig.ARIMA_PARAMS['window']:]
         probs = {}
         
         # 准备每个号码的序列
-        # [优化] 添加 tqdm 显式进度条，避免用户以为卡死
+        # [优化] 添加 tqdm 显式进度条,避免用户以为卡死
         iterator = tqdm(range(1, 81), desc="📊 ARIMA Predicting", leave=False, unit="num")
         for n in iterator:
             series = [1 if n in d['sorted'] else 0 for d in recent_window]
@@ -894,7 +909,7 @@ class ARIMAEngine:
                     res = model.fit()
                     pred = res.forecast(steps=1)[0]
                     probs[n] = float(np.clip(pred, 0, 1))
-            except:
+            except Exception:
                 probs[n] = 0.0
         return probs
 
@@ -959,11 +974,12 @@ class GBDTEngine:
         return (xgb_imp + lgb_imp) / 2.0
 
     def mine_association_rules(self, history: List[Dict]) -> List[Dict]:
-        """挖掘号码间的关联规则 (支持度、置信度、提升度)"""
-        if not history: return []
+        """挖掘号码间的关联规则 (支持度, 置信度, 提升度)"""
+        if not history:
+            return []
         
         # 准备事务数据
-        transactions = [set(d['sorted']) for d in history[-200:]] # 取最近 200 期
+        transactions = [set(d['sorted']) for d in history[-200:]]  # 取最近 200 期
         total = len(transactions)
         
         # 1. 计算单项支持度
@@ -984,7 +1000,8 @@ class GBDTEngine:
         rules = []
         for (n1, n2), count in pair_support.items():
             s_pair = count / total
-            if s_pair < SupremeConfig.ASSOCIATION_PARAMS['min_support']: continue
+            if s_pair < SupremeConfig.ASSOCIATION_PARAMS['min_support']:
+                continue
             
             s1 = support[n1] / total
             s2 = support[n2] / total
@@ -993,9 +1010,9 @@ class GBDTEngine:
             conf = s_pair / s1
             lift = conf / s2
             
-            if conf >= SupremeConfig.ASSOCIATION_PARAMS['min_confidence'] and lift >= SupremeConfig.ASSOCIATION_PARAMS['min_lift']:
+            if conf >= SupremeConfig.ASSOCIATION_PARAMS['min_confidence'] and lift >= SupremeConfig.ASSOCIATION_PARAMS.get('min_lift', 1.0):
                 rules.append({
-                    "pair": f"{n1:02d}-{n2:02d}",
+                    "pair": f"{n1:02d} -{n2:02d} ",
                     "support": round(s_pair, 4),
                     "conf": round(conf, 4),
                     "lift": round(lift, 4)
@@ -1005,7 +1022,7 @@ class GBDTEngine:
         return sorted(rules, key=lambda x: x['lift'], reverse=True)
 
 class AutoTuner:
-    """自动调优引擎: 参数、模型与回测的最优化控制"""
+    """自动调优引擎: 参数, 模型与回测的最优化控制"""
     def __init__(self, manager: 'SupremeManager'):
         self.manager = manager
         self.logger = logging.getLogger("AutoTuner")
@@ -1063,30 +1080,30 @@ class AutoTuner:
         
         self.manager.global_ml.train_or_load(history, data_time, window=window, mode='train')
         self.manager.pos_ml.train_or_load(history, data_time, mode='train')
-        # TCN 训练较慢，通常不建议在每轮 trial 中重训，除非参数变化很大
+        # TCN 训练较慢,通常不建议在每轮 trial 中重训,除非参数变化很大
         # self.manager.tcn_engine.train_or_load(history, data_time, mode='train')
 
         # 6. 执行滚动窗口回测 (固定 VALIDATION_SIZE 期)
-        # 注意：为了最大化命中率，这里需要模拟真实的五流融合预测
+        # 注意:为了最大化命中率,这里需要模拟真实的五流融合预测
         validator = AutoValidationEngine(
             self.manager.data_engine, 
             self.manager.global_ml, 
             self.manager.pos_ml
         )
         
-        # 在回测前，先用训练集 (History - VALIDATION_SIZE) 预热模型
-        # 这样调优的是针对“未知”数据的泛化能力
+        # 在回测前,先用训练集 (History - VALIDATION_SIZE) 预热模型
+        # 这样调优的是针对"未知"数据的泛化能力
         history = self.manager.data_engine.history
         split_idx = len(history) - SupremeConfig.VALIDATION_SIZE
         train_history = history[:split_idx]
         
-        # 预计算回测期间的所有 TCN 和 ARIMA 预测，避免重复计算
+        # 预计算回测期间的所有 TCN 和 ARIMA 预测,避免重复计算
         tcn_probs_all = {}
         arima_probs_all = {}
         
         for i in range(split_idx, len(history)):
             known_history = history[:i]
-            # [优化] TCN 和 ARIMA 预测耗时较长，增加日志
+            # [优化] TCN 和 ARIMA 预测耗时较长,增加日志
             if i % 5 == 0: 
                 self.logger.info(f"....Pre-calculating Period {history[i]['period']} (TCN/ARIMA)")
             tcn_probs_all[i] = self.manager.tcn_engine.predict(known_history)
@@ -1120,14 +1137,13 @@ class AutoTuner:
         self.logger.info(f"🎯 启动全自动参数调优 (Optuna, Trials={SupremeConfig.AUTO_TUNE_TRIALS})...")
         try:
             # 增加并行调优支持 (如果资源允许)
-            # 增加并行调优支持 (如果资源允许)
             # [优化] 使用 MedianPruner 提前剪枝无效的 Trial
             study = optuna.create_study(direction='maximize', pruner=optuna.pruners.MedianPruner())
             
             # [优化] 使用 tqdm 显示调优进度, 手动迭代优化
             pbar = tqdm(range(SupremeConfig.AUTO_TUNE_TRIALS), desc="🔥 AutoTuning", unit="trial")
             for _ in pbar:
-                study.optimize(self.objective, n_trials=1, n_jobs=1) # 强制单进程以防 Windows 死锁
+                study.optimize(self.objective, n_trials=1, n_jobs=1)  # 强制单进程以防 Windows 死锁
                 pbar.set_postfix({"best_score": f"{study.best_value:.4f}"})
             
             pbar.close()
@@ -1177,7 +1193,8 @@ class AutoTuner:
             try:
                 with open(history_path, 'r', encoding='utf-8') as f:
                     history = json.load(f)
-            except: pass
+            except Exception:
+                pass
             
         new_entry = {
             "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -1206,9 +1223,9 @@ class MLEngine:
         self.logger = logging.getLogger("GlobalML")
         self.model_rf = None
         self.model_mlp = None
-        self.model_gbdt = GBDTEngine() # 集成 GBDT 家族
+        self.model_gbdt = GBDTEngine()  # 集成 GBDT 家族
         self.scaler = StandardScaler()
-        self.feature_importances = [] # 初始化特征重要性列表
+        self.feature_importances = []  # 初始化特征重要性列表
         version_tag = datetime.now().strftime('%Y%m%d')
         self.model_path = SupremeConfig.CACHE_DIR / f"global_ensemble_{version_tag}.joblib"
 
@@ -1239,7 +1256,7 @@ class MLEngine:
         return matrix
 
     def construct_features(self, history: List[Dict], window: int = 12, mode: str = 'train') -> Tuple[np.ndarray, np.ndarray]:
-        """构建深度特征矩阵 (集成跨期相关性、遗漏衰减及自适应窗口)"""
+        """构建深度特征矩阵 (集成跨期相关性, 遗漏衰减及自适应窗口)"""
         cache_path = self._get_cache_path(history, window, mode)
         
         data_mtime = max(
@@ -1252,7 +1269,8 @@ class MLEngine:
                 with open(cache_path, 'rb') as f:
                     self.logger.info(f"💾 加载特征缓存: {cache_path.name} (Window={window})")
                     return pickle.load(f)
-            except: pass
+            except Exception:
+                pass
 
         self.logger.info(f"⚙️ 构造特征 (Window={window}, Mode={mode})...")
         X, y = [], []
@@ -1261,7 +1279,8 @@ class MLEngine:
         # 预计算全局出现位置与跟随矩阵
         appearances = defaultdict(list)
         for idx, item in enumerate(history):
-            for n in item['sorted']: appearances[n].append(idx)
+            for n in item['sorted']:
+                appearances[n].append(idx)
         
         # 跟随矩阵计算
         if mode == 'train':
@@ -1361,12 +1380,13 @@ class MLEngine:
         try:
             with open(cache_path, 'wb') as f:
                 pickle.dump(res, f)
-        except: pass
+        except Exception:
+            pass
             
         return res
 
     def train_or_load(self, history: List[Dict], data_time: float, window: int = 12, mode: str = 'train', force: bool = False):
-        """加载有效模型或重训 (支持多流融合：RF + MLP + GBDT)"""
+        """加载有效模型或重训 (支持多流融合:RF + MLP + GBDT)"""
         # 生成基于模式的模型路径
         model_name = f"global_ensemble_{mode}_{window}"
         version_tag = datetime.now().strftime('%Y%m%d')
@@ -1379,7 +1399,8 @@ class MLEngine:
                     self.model_rf, self.model_mlp, self.model_gbdt, self.scaler, self.feature_importances = joblib.load(model_path)
                     self.logger.info(f"✅ 已加载 Global Ensemble ({mode}, Window={window})")
                     return
-                except: pass
+                except Exception:
+                    pass
 
         X, y = self.construct_features(history, window=window, mode=mode)
         self.scaler.fit(X)
@@ -1418,7 +1439,7 @@ class MLEngine:
         try:
             rf_imp = np.mean([est.estimator.feature_importances_ for est in self.model_rf.calibrated_classifiers_], axis=0)
         except (AttributeError, Exception):
-            # 降级方案：如果无法直接获取，则设为等权重或尝试从 base_rf 获取
+            # 降级方案:如果无法直接获取,则设为等权重或尝试从 base_rf 获取
             rf_imp = np.zeros(len(feature_names))
         # 提取 GBDT 重要性
         gbdt_imp = self.model_gbdt.get_feature_importance()
@@ -1451,7 +1472,7 @@ class MLEngine:
         gbdt_probs = self.model_gbdt.predict_proba(X_scaled)[:, 1]
         
         return {
-            "rf_mlp": rf_probs * 0.6 + mlp_probs * 0.4, # 合并为 A+C
+            "rf_mlp": rf_probs * 0.6 + mlp_probs * 0.4,  # 合并为 A+C
             "gbdt": gbdt_probs
         }
 
@@ -1476,7 +1497,8 @@ class PositionalEngine:
                     self.models, self.pos_freqs = joblib.load(model_path)
                     self.logger.info(f"✅ 已加载全部 20 组位序锚点模型 ({mode})")
                     return
-                except: pass
+                except Exception:
+                    pass
 
         self.logger.info(f"🔄 正在为 20 个位序点位建立专属森林 ({mode})...")
         
@@ -1504,7 +1526,7 @@ class PositionalEngine:
                 prev_vals = [train_slice[k]['ordered'][p_idx] for k in range(i-15, i)]
                 target = train_slice[i]['ordered'][p_idx]
                 
-                # 特征：最近序列 + 统计量 + 当前号码的历史频率
+                # 特征:最近序列 + 统计量 + 当前号码的历史频率
                 last_val = prev_vals[-1]
                 feat = prev_vals + [np.mean(prev_vals), np.std(prev_vals), freq_map.get(last_val, 0)]
                 X_p.append(feat)
@@ -1532,7 +1554,7 @@ class PositionalEngine:
         return preds
 
 class SelectEngine:
-    """实战验证引擎：评估用户自选组合 (select2/selectX)"""
+    """实战验证引擎:评估用户自选组合 (select2/selectX)"""
     def __init__(self):
         self.logger = logging.getLogger("SelectEngine")
 
@@ -1579,7 +1601,7 @@ class SelectEngine:
         return results
 
 class ReportEngine:
-    """高级研报组件库：八分区、形态分析、全量分析表"""
+    """高级研报组件库:八分区, 形态分析, 全量分析表"""
     
     @staticmethod
     def _generate_ascii_sparkline(data_list: List[float], width: int = 10) -> str:
@@ -1589,7 +1611,8 @@ class ReportEngine:
             data_list: 数值列表
             width: 近似宽度
         """
-        if not data_list: return "N/A"
+        if not data_list:
+            return "N/A"
         
         # 归一化
         min_val, max_val = min(data_list), max(data_list)
@@ -1615,14 +1638,14 @@ class ReportEngine:
 
     @staticmethod
     def get_basic_patterns(numbers: List[int], last_sorted: List[int] = None, history_subset: List[List[int]] = None) -> Dict:
-        """计算基础形态指标 (极大增强版：新增 AC值、连号、尾数、冷热温)"""
+        """计算基础形态指标 (极大增强版:新增 AC值, 连号, 尾数, 冷热温)"""
         if not numbers:
             return {}
 
         # 1. 基础维度
         odd = len([n for n in numbers if n % 2 != 0])
         big = len([n for n in numbers if n > 40])
-        primes = {2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79}
+        primes = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79}
         prime_count = len([n for n in numbers if n in primes])
         
         # 2. AC值 (算术复杂度)
@@ -1660,7 +1683,7 @@ class ReportEngine:
         if last_sorted:
             last_set = set(last_sorted)
             repeat_count = len(set(numbers) & last_set)
-            # 邻号：本期号码在上一期号码的 ±1 范围内
+            # 邻号:本期号码在上一期号码的 ±1 范围内
             neighbor_set = set()
             for n in last_sorted:
                 neighbor_set.add(n-1)
@@ -1670,17 +1693,20 @@ class ReportEngine:
         # 6. 冷热温分析 (基于 history_subset)
         cold_hot_warm = {"hot": 0, "warm": 0, "cold": 0}
         if history_subset:
-            # 兼容处理：history_subset 可能是 Dict 列表或 List 列表
+            # 兼容处理:history_subset 可能是 Dict 列表或 List 列表
             clean_history = [row['sorted'] if isinstance(row, dict) else row for row in history_subset]
             flat_history = [n for row in clean_history for n in row]
             counts = Counter(flat_history)
-            threshold_hot = len(clean_history) * 20 / 80 * 1.2 # 高于平均 20%
-            threshold_cold = len(clean_history) * 20 / 80 * 0.8 # 低于平均 20%
+            threshold_hot = len(clean_history) * 20 / 80 * 1.2  # 高于平均 20%
+            threshold_cold = len(clean_history) * 20 / 80 * 0.8  # 低于平均 20%
             for n in numbers:
                 freq = counts.get(n, 0)
-                if freq >= threshold_hot: cold_hot_warm["hot"] += 1
-                elif freq <= threshold_cold: cold_hot_warm["cold"] += 1
-                else: cold_hot_warm["warm"] += 1
+                if freq >= threshold_hot:
+                    cold_hot_warm["hot"] += 1
+                elif freq <= threshold_cold:
+                    cold_hot_warm["cold"] += 1
+                else:
+                    cold_hot_warm["warm"] += 1
 
         # 7. Hurst 指数 (基于 history_subset)
         hurst_val = 0.5
@@ -1692,11 +1718,16 @@ class ReportEngine:
         # 8. 象限分布 (Quadrant distribution: 1-16, 17-32, 33-48, 49-64, 65-80)
         quadrants = [0, 0, 0, 0, 0]
         for n in numbers:
-            if 1 <= n <= 16: quadrants[0] += 1
-            elif 17 <= n <= 32: quadrants[1] += 1
-            elif 33 <= n <= 48: quadrants[2] += 1
-            elif 49 <= n <= 64: quadrants[3] += 1
-            elif 65 <= n <= 80: quadrants[4] += 1
+            if 1 <= n <= 16:
+                quadrants[0] += 1
+            elif 17 <= n <= 32:
+                quadrants[1] += 1
+            elif 33 <= n <= 48:
+                quadrants[2] += 1
+            elif 49 <= n <= 64:
+                quadrants[3] += 1
+            elif 65 <= n <= 80:
+                quadrants[4] += 1
         quadrant_str = ":".join(map(str, quadrants))
 
         return {
@@ -1731,7 +1762,7 @@ class ReportEngine:
         # f* = (p * (b+1) - 1) / b
         b = 3.5 
         advice = []
-        for r in resonance_picks[:5]: # 仅对前 5 个共振号进行建议
+        for r in resonance_picks[:5]:  # 仅对前 5 个共振号进行建议
             p = r['prob']
             f_star = (p * (b + 1) - 1) / b
             if f_star > 0:
@@ -1743,7 +1774,7 @@ class ReportEngine:
                     "sizing": f"{suggested*100:.1f}%",
                     "level": "🚀 激进" if suggested > 0.1 else "⚖️ 稳健"
                 })
-        return {"advice": advice, "summary": "建议采用分仓分批入场，严控最大回撤"}
+        return {"advice": advice, "summary": "建议采用分仓分批入场,严控最大回撤"}
 
     @staticmethod
     def get_quadrant_analysis(probs: Dict[int, float]) -> List[Dict]:
@@ -1755,9 +1786,9 @@ class ReportEngine:
             avg_prob = np.mean([probs.get(n, 0) for n in quad_nums])
             hot_nums = sorted(quad_nums, key=lambda n: probs.get(n, 0), reverse=True)[:4]
             
-            rating = "🔥" * int(avg_prob * 30) # 象限热度
+            rating = "🔥" * int(avg_prob * 30)  # 象限热度
             quads.append({
-                "range": f"{start:02d}-{end:02d}",
+                "range": f"{start:02d} -{end:02d}",
                 "avg_prob": round(avg_prob, 4),
                 "hot_nums": hot_nums,
                 "rating": rating if rating else "💤"
@@ -1784,14 +1815,15 @@ class ReportEngine:
 
     @staticmethod
     def get_vertical_analysis(pos_preds: Dict[int, int], global_probs: Dict[int, float], history: List[Dict]) -> List[Dict]:
-        """20点位垂直分布交叉验证 (增强版：一位置一行多维度指标)"""
+        """20点位垂直分布交叉验证 (增强版:一位置一行多维度指标)"""
         top_global = sorted(global_probs.keys(), key=lambda n: global_probs[n], reverse=True)[:20]
         
         # 获取遗漏信息
         last_idx = len(history)
         appearances = defaultdict(list)
         for idx, item in enumerate(history):
-            for n in item['sorted']: appearances[n].append(idx)
+            for n in item['sorted']:
+                appearances[n].append(idx)
         
         vertical = []
         for i in range(20):
@@ -1829,9 +1861,9 @@ class ReportEngine:
             avg_prob = np.mean([probs.get(n, 0) for n in zone_nums])
             hot_nums = sorted(zone_nums, key=lambda n: probs.get(n, 0), reverse=True)[:5]
             
-            rating = "⭐" * int(avg_prob * 40) # 动态评级
+            rating = "⭐" * int(avg_prob * 40)  # 动态评级
             zones.append({
-                "range": f"{start:02d}-{end:02d}",
+                "range": f"{start:02d} -{end:02d}",
                 "avg_prob": round(avg_prob, 4),
                 "hot_nums": hot_nums,
                 "rating": rating if rating else "-"
@@ -1844,7 +1876,8 @@ class ReportEngine:
         last_sorted = history[-1]['sorted'] if history else []
         appearances = defaultdict(list)
         for idx, item in enumerate(history):
-            for n in item['sorted']: appearances[n].append(idx)
+            for n in item['sorted']:
+                appearances[n].append(idx)
         
         last_idx = len(history)
         table = []
@@ -1889,7 +1922,7 @@ class ReportEngine:
             latest_dir = max(history_dirs, key=lambda x: x.name)
             file_path = latest_dir / "omission_stats.txt"
             
-            # 按遗漏值分组，模拟原有紧凑格式
+            # 按遗漏值分组,模拟原有紧凑格式
             gap_groups = defaultdict(list)
             for row in full_table:
                 gap_groups[row['gap']].append(row['num'])
@@ -1935,10 +1968,12 @@ class KernelEngine:
             idx = n - 1
             p = rf_mlp_probs[idx] * w['rf_mlp'] + gbdt_probs[idx] * w['gbdt']
             
-            if tcn_probs: p += tcn_probs.get(n, 0) * w['tcn']
-            if arima_probs: p += arima_probs.get(n, 0) * w['arima']
+            if tcn_probs:
+                p += tcn_probs.get(n, 0) * w['tcn']
+            if arima_probs:
+                p += arima_probs.get(n, 0) * w['arima']
             
-            # 4. Hurst 动态增强 (如果趋势极强，对热号加权)
+            # 4. Hurst 动态增强 (如果趋势极强,对热号加权)
             if overall_hurst > 0.6 and p > 0.25:
                 p *= (1.0 + (overall_hurst - 0.6))
             
@@ -1947,7 +1982,7 @@ class KernelEngine:
         # 1. 核心 20 点位 (位序模型预测值 + 外部加载点位)
         pos_core = set(pos_preds.values())
         if loaded_core_points:
-            # 融合外部点位，若超过 20 个则根据概率筛选
+            # 融合外部点位,若超过 20 个则根据概率筛选
             combined_core = pos_core | set(loaded_core_points)
             if len(combined_core) > 20:
                 core_20 = sorted(list(combined_core), key=lambda n: final_probs.get(n, 0), reverse=True)[:20]
@@ -2008,12 +2043,16 @@ class AutoValidationEngine:
         total = len(history)
         start_idx = total - periods
         
-        # 如果提供了参数，则注入 (AutoTuner 使用)
+        # 如果提供了参数,则注入 (AutoTuner 使用)
         if params:
-            if 'rf_mlp' in params: SupremeConfig.FUSION_WEIGHTS['rf_mlp'] = params['rf_mlp']
-            if 'gbdt' in params: SupremeConfig.FUSION_WEIGHTS['gbdt'] = params['gbdt']
-            if 'tcn' in params: SupremeConfig.FUSION_WEIGHTS['tcn'] = params['tcn']
-            if 'arima' in params: SupremeConfig.FUSION_WEIGHTS['arima'] = params['arima']
+            if 'rf_mlp' in params:
+                SupremeConfig.FUSION_WEIGHTS['rf_mlp'] = params['rf_mlp']
+            if 'gbdt' in params:
+                SupremeConfig.FUSION_WEIGHTS['gbdt'] = params['gbdt']
+            if 'tcn' in params:
+                SupremeConfig.FUSION_WEIGHTS['tcn'] = params['tcn']
+            if 'arima' in params:
+                SupremeConfig.FUSION_WEIGHTS['arima'] = params['arima']
 
         
         # [优化] 添加 tqdm 进度条
@@ -2027,7 +2066,7 @@ class AutoValidationEngine:
             probs_dict = self.global_engine.predict(known_history)
             bt_pos_preds = self.pos_engine.predict(known_history)
             
-            # 简化回测：不运行耗时较长的 TCN/ARIMA，仅验证 A+B+C+GBDT
+            # 简化回测:不运行耗时较长的 TCN/ARIMA,仅验证 A+B+C+GBDT
             pool_info = KernelEngine.generate_smart_pool(probs_dict, bt_pos_preds, known_history)
             smart_pool = pool_info['smart_pool']
             core_20 = pool_info['core_20']
@@ -2047,7 +2086,7 @@ class AutoValidationEngine:
         return np.mean([r['hits'] for r in results]) if results else 0
 
     def run_backtest_full(self, periods: int = 15, params: Dict = None, tcn_probs_stream: Dict = None, arima_probs_stream: Dict = None):
-        """执行全流集成滚动回测 (AutoTuner 专用，最大化精度)"""
+        """执行全流集成滚动回测 (AutoTuner 专用,最大化精度)"""
         history = self.data_engine.history
         total = len(history)
         start_idx = total - periods
@@ -2081,7 +2120,8 @@ class AutoValidationEngine:
 
     def generate_validation_report(self) -> str:
         """生成 Markdown 格式的详细验证对账单"""
-        if not self.results: return "无回测数据"
+        if not self.results:
+            return "无回测数据"
         
         avg_hits = np.mean([r['hits'] for r in self.results])
         avg_core = np.mean([r['core_hits'] for r in self.results])
@@ -2102,13 +2142,17 @@ class AutoValidationEngine:
         plt.savefig(img_path)
         plt.close()
         
+        avg_hits_str = f"{avg_hits:.2f}"
+        avg_core_str = f"{avg_core:.2f}"
+        total_pnl_str = f"{total_pnl:.2f}"
+        
         report = f"""
 ### 🧪 系统回测验证报告 (Supreme Validation)
 ---
 **验证期数**: {len(self.results)} 期
-**平均命中率 (Smart Pool)**: {avg_hits:.2f} / 每期
-**平均核心命中 (Core 20)**: {avg_core:.2f} / 每期
-**累计虚拟增益指标**: {total_pnl:.2f} 
+**平均命中率 (Smart Pool)**: {avg_hits_str} 个/期
+**平均核心命中 (Core 20)**: {avg_core_str} 个/期
+**累计虚拟增益指标**: {total_pnl_str}
 
 #### 📈 命中增长曲线
 ![Backtest Curve]({img_filename})
@@ -2149,11 +2193,11 @@ class SupremeManager:
         rec_window = regime_info['recommended_window']
         self.logger.info(f"🔍 市场感知: {regime_info['status']}, 推荐窗口: {rec_window}")
 
-        # [新增] 次日验证：检查昨日预测命中情况
+        # [新增] 次日验证:检查昨日预测命中情况
         self.verify_yesterday_prediction()
 
         # 1. 模型准备 (传递自适应窗口)
-        # 生产模式下，使用全量数据进行最终预测训练 (mode='production')
+        # 生产模式下,使用全量数据进行最终预测训练 (mode='production')
         self.global_ml.train_or_load(history, data_time, window=rec_window, mode='production')
         self.pos_ml.train_or_load(history, data_time, mode='production')
         self.tcn_engine.train_or_load(history, data_time, mode='production')
@@ -2211,20 +2255,22 @@ class SupremeManager:
         # 9. [新增] 存档预测结果供次日比对
         self.archive_prediction(final_result)
         
-        # 6. 持久化控制
+        # 10. 持久化控制
         if not persist_models:
             try:
-                if self.global_ml.model_path.exists(): os.remove(self.global_ml.model_path)
-                if self.pos_ml.model_path.exists(): os.remove(self.pos_ml.model_path)
+                if self.global_ml.model_path.exists():
+                    os.remove(self.global_ml.model_path)
+                if self.pos_ml.model_path.exists():
+                    os.remove(self.pos_ml.model_path)
                 self.logger.info("已清理临时模型文件")
             except Exception as e:
                 self.logger.warning(f"模型清理提示: {e}")
 
     def verify_yesterday_prediction(self):
-        """[首席逻辑] 次日自动验证：读取昨日预测结果并比对最新数据命中率"""
+        """[首席逻辑] 次日自动验证:读取昨日预测结果并比对最新数据命中率"""
         archive_path = SupremeConfig.BASE_DIR / "data" / "last_prediction.json"
         if not archive_path.exists():
-            self.logger.info("ℹ️ 未发现昨日预测存档，跳过次日验证。")
+            self.logger.info("ℹ️ 未发现昨日预测存档,跳过次日验证.")
             return
 
         try:
@@ -2237,7 +2283,7 @@ class SupremeManager:
             actual_draw = next((d for d in history if d['period'] == last_period), None)
             
             if not actual_draw:
-                self.logger.info(f"⏳ 昨日预测期号 {last_period} 尚未开奖，等待新数据拉取。")
+                self.logger.info(f"⏳ 昨日预测期号 {last_period} 尚未开奖,等待新数据拉取.")
                 return
             
             # 执行比对
@@ -2253,29 +2299,29 @@ class SupremeManager:
             self.logger.info(f"   - 核心 20 命中: {core_hits} / 20")
             self.logger.info(f"   - 智能大底命中: {pool_hits} / {len(smart_pool)}")
             
-            # [策略调整逻辑]：如果命中率过低，强制触发本轮 AutoTune
+            # [策略调整逻辑]:如果命中率过低,强制触发本轮 AutoTune
             if core_hits < 3 or pool_hits < 8:
-                self.logger.warning("⚠️ 昨日命中率偏低，系统将自动触发本轮深度调优 (AutoTune Force ON)")
+                self.logger.warning("⚠️ 昨日命中率偏低,系统将自动触发本轮深度调优 (AutoTune Force ON)")
                 SupremeConfig.AUTO_TUNE_ENABLED = True
-                SupremeConfig.AUTO_TUNE_TRIALS = max(SupremeConfig.AUTO_TUNE_TRIALS, 40) # 增加搜索深度
+                SupremeConfig.AUTO_TUNE_TRIALS = max(SupremeConfig.AUTO_TUNE_TRIALS, 40)  # 增加搜索深度
             self.logger.info("=" * 50)
             
-            # 验证完成后重命名或清理，避免重复验证
+            # 验证完成后重命名或清理,避免重复验证
             archive_path.rename(archive_path.with_name(f"verified_{last_period}.json"))
             
         except Exception as e:
             self.logger.error(f"❌ 昨日预测验证失败: {e}")
 
     def archive_prediction(self, result: Dict):
-        """[数据留存] 将当前预测结果结构化存档，供次日自动化比对验证"""
+        """[数据留存] 将当前预测结果结构化存档,供次日自动化比对验证"""
         archive_path = SupremeConfig.BASE_DIR / "data" / "last_prediction.json"
         try:
             # 确定预测的下一期期号 (假设历史最后一期 + 1)
             last_hist_period = self.data_engine.history[-1]['period']
             try:
-                # 尝试解析期号，处理如 20260114 这种格式
+                # 尝试解析期号,处理如 20260114 这种格式
                 next_period = str(int(last_hist_period) + 1)
-            except:
+            except Exception:
                 next_period = "UNKNOWN_NEXT"
                 
             archive_data = {
@@ -2288,12 +2334,12 @@ class SupremeManager:
             
             with open(archive_path, 'w', encoding='utf-8') as f:
                 json.dump(archive_data, f, ensure_ascii=False, indent=4)
-            self.logger.info(f"📂 预测结果已存档至 {archive_path.name}，待次日验证。")
+            self.logger.info(f"📂 预测结果已存档至 {archive_path.name}, 待次日验证.")
         except Exception as e:
             self.logger.error(f"❌ 预测存档失败: {e}")
 
     def _generate_final_report(self, result: Dict, validation_md: str, select_results: Dict = None):
-        """生成全维度一体化量化研报 (超越 160014 版本，极度详尽版)"""
+        """生成全维度一体化量化研报 (超越 160014 版本,极度详尽版)"""
         report_path = SupremeConfig.REPORT_DIR / f"Supreme_Quant_Analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
         
         core_20_str = " ".join([f"{n:02d}" for n in result['core_20']])
@@ -2323,7 +2369,7 @@ class SupremeManager:
             advice = "重点打击" if r['prob'] > 0.28 else "稳健配置"
             res_md += f"| **{r['num']:02d}** | `{r['prob']}` | {r['level']} | {advice} |\n"
             
-        # 3. 20点位详细垂直分布表 (一位置一行，多维度)
+        # 3. 20点位详细垂直分布表 (一位置一行,多维度)
         pos_detail_md = "| 位序 (Pos) | 🔒 预测 | 📈 概率 | ⏳ 遗漏 | 🎯 信心 | 🔍 交叉验证 | 🌟 评级 |\n"
         pos_detail_md += "|:---:|:---:|:---:|:---:|:---:|:---|:---:|\n"
         for v in result['vertical_analysis']:
@@ -2368,10 +2414,10 @@ class SupremeManager:
         full_data = {row['num']: row for row in result['full_table']}
         for start_num in [1, 21, 41, 61]:
             end_num = start_num + 19
-            full_table_md += f"\n#### 📍 分区 {start_num}-{end_num}\n"
+            full_table_md += f"\n#### 📍 分区 {start_num} -{end_num}\n"
             full_table_md += "| 号码 | 概率 | 遗漏 | 得分 | 趋势 | 状态 |\n|:---:|:---:|:---:|:---:|:---:|:---:|\n"
             for n in range(start_num, end_num + 1):
-                row = full_data.get(n, {"prob":0, "gap":0, "score":0, "trend":"-"})
+                row = full_data.get(n, {"prob": 0, "gap": 0, "score": 0, "trend": "-"})
                 status = "🔥" if row['score'] > 28 else "✨" if row['score'] > 26 else "➡️"
                 full_table_md += f"| {n:02d} | {row['prob']} | {row['gap']} | {row['score']} | {row['trend']} | {status} |\n"
 
@@ -2382,7 +2428,7 @@ class SupremeManager:
                 select_md += "\n### 📂 Select2 组合评估\n| 组合 | 系统信心分 | 推荐度 | 专家评价 |\n|:---:|:---:|:---:|:---|\n"
                 for s in select_results['select2']:
                     rec = "✅" if s['score'] > 26 else "⚠️"
-                    comment = "极高共振，建议重仓" if s['score'] > 28 else "概率占优，建议配置" if s['score'] > 26 else "数据一般，谨慎参考"
+                    comment = "极高共振,建议重仓" if s['score'] > 28 else "概率占优,建议配置" if s['score'] > 26 else "数据一般,谨慎参考"
                     select_md += f"| **{s['nums']}** | `{s['score']}` | {rec} | {comment} |\n"
             
             if select_results['selectX']:
@@ -2415,7 +2461,7 @@ class SupremeManager:
         # 11. 模型贡献度与演化分析 (New)
         importance_data = self.global_ml.get_importance_report()
         imp_md = "| 特征名称 | 贡献度 (Weight) | 状态 | 评价 |\n|:---:|:---:|:---:|:---|\n"
-        for imp in importance_data[:8]: # 显示 Top 8
+        for imp in importance_data[:8]:  # 显示 Top 8
             status = "🔥 核心" if imp['importance'] > 0.1 else "✅ 有效"
             comment = "新引入特征" if imp['feature'] == "Follower_Strength" else "基础特征"
             imp_md += f"| {imp['feature']} | `{imp['importance']}` | {status} | {comment} |\n"
@@ -2427,10 +2473,11 @@ class SupremeManager:
             try:
                 with open(history_path, 'r', encoding='utf-8') as f:
                     t_hist = json.load(f)
-                for h in t_hist[-5:]: # 最近 5 次演化
+                for h in t_hist[-5:]:  # 最近 5 次演化
                     w_h = h.get('weights', {})
                     evolution_md += f"| {h['timestamp'][5:16]} | `{h['best_value']}` | {w_h.get('rf_mlp',0)} | {w_h.get('gbdt',0)} | {w_h.get('tcn',0)} | {w_h.get('arima',0)} |\n"
-            except: evolution_md += "| - | - | - | - | - | 历史读取失败 |\n"
+            except Exception:
+                evolution_md += "| - | - | - | - | - | 历史读取失败 |\n"
         else:
             evolution_md += "| - | - | - | - | - | 初始运行无历史 |\n"
 
@@ -2443,22 +2490,22 @@ class SupremeManager:
 {nav_md}
 
 ## 🎯 0. 首席执行综述 (Executive Summary)
-> **核心洞察**：模型基于 {len(self.data_engine.history)} 期历史数据深度训练。五流系统 (A+B+C+D+E) 已全面上线。
-> **参数调优**: 已完成自动调优 (AutoTuner)，当前最佳融合权重：
+> **核心洞察**:模型基于 {len(self.data_engine.history)} 期历史数据深度训练.五流系统 (A+B+C+D+E) 已全面上线.
+> **参数调优**: 已完成自动调优 (AutoTuner),当前最佳融合权重:
 {weight_md}
-> **本期判词**: **[Global]** 宏观有序，**[Positional]** 细节丰富。建议采用 **共振优先，防守反击** 策略。
+> **本期判词**: **[Global]** 宏观有序,**[Positional]** 细节丰富.建议采用 **共振优先,防守反击** 策略.
 
 ## 🌊 1. 双流核心 (Dual-Stream Intelligence)
-> **架构逻辑**: 本系统深度融合 **[全局随机森林] (Stream A)**、**[位序随机森林] (Stream B)**、**[MLP 神经网络] (Stream C)**、**[TCN 时序卷积] (Stream D)** 与 **[ARIMA 时间序列] (Stream E)**。
+> **架构逻辑**: 本系统深度融合 **[全局随机森林] (Stream A)**, **[位序随机森林] (Stream B)**, **[MLP 神经网络] (Stream C)**, **[TCN 时序卷积] (Stream D)** 与 **[ARIMA 时间序列] (Stream E)**.
 
 ### 🧠 1.0 混合引擎状态 (Hybrid Engine Status)
 | 引擎流 | 模型算法 | 核心特征 | 状态 |
 |:---:|:---|:---|:---:|
-| **Stream A** | Random Forest | 全局频率、遗漏衰减 | ✅ Active |
+| **Stream A** | Random Forest | 全局频率, 遗漏衰减 | ✅ Active |
 | **Stream B** | Positional Forest | 20点位独立序列 | ✅ Active |
-| **Stream C** | MLP Neural Net | 非线性物理场、跨期相关 | ✅ Active |
-| **Stream D** | TCN Network | 时序长程依赖、扩张卷积 | ✅ Active |
-| **Stream E** | ARIMA / GBDT | 小样本趋势、梯度提升 | ✅ Active |
+| **Stream C** | MLP Neural Net | 非线性物理场, 跨期相关 | ✅ Active |
+| **Stream D** | TCN Network | 时序长程依赖, 扩张卷积 | ✅ Active |
+| **Stream E** | ARIMA / GBDT | 小样本趋势, 梯度提升 | ✅ Active |
 
 ### 💎 1.1 双流共振推荐 (Resonance Picks)
 {res_md}
@@ -2467,14 +2514,14 @@ class SupremeManager:
 {audit_md}
 
 ## 🌐 3. 市场环境感知 (Market Regime)
-> **深度感知**: 基于近期和值趋势斜率、波动率及 **Shannon 熵 (Entropy)** 动态调整模型观察窗口。
+> **深度感知**: 基于近期和值趋势斜率, 波动率及 **Shannon 熵 (Entropy)** 动态调整模型观察窗口.
 
 | 指标 | 当前值 | 参考范围 | 状态 |
 |:---:|:---:|:---:|:---:|
 | **盘面状态** | `{regime['status']}` | - | - |
-| **趋势斜率** | `{regime['slope']}` | >2.5 或 <-2.5 | { "📈" if regime['slope'] > 0 else "📉" if regime['slope'] < 0 else "⚖️" } |
-| **波动率** | `{regime['volatility']}` | <0.04(稳) >0.07(乱) | { "🌪️" if regime['volatility'] > 0.07 else "⚖️" } |
-| **盘面熵值** | `{regime['entropy']}` | <5.8(集) >6.1(散) | { "🧩" if regime['entropy'] < 5.8 else "🌪️" } |
+| **趋势斜率** | `{regime['slope']}` | >2.5 或 <-2.5 | {"📈" if regime['slope'] > 0 else "📉" if regime['slope'] < 0 else "⚖️"} |
+| **波动率** | `{regime['volatility']}` | <0.04(稳) >0.07(乱) | {"🌪️" if regime['volatility'] > 0.07 else "⚖️"} |
+| **盘面熵值** | `{regime['entropy']}` | <5.8(集) >6.1(散) | {"🧩" if regime['entropy'] < 5.8 else "🌪️"} |
 | **推荐窗口** | `{regime['recommended_window']}` | 8-15 | **自适应同步** |
 
 ## 📊 4. 基础形态分析 (Basic Patterns)
@@ -2493,19 +2540,19 @@ class SupremeManager:
 | **尾数分布** | `{patterns.get('tails', 'N/A')}` | (0-9) | 均值:2
 
 ## 🔗 4. 关联挖掘 (Association & Follower)
-> **挖掘逻辑**: 结合二阶关联规则与时序跟随强度，识别号码间的深层牵引力。
+> **挖掘逻辑**: 结合二阶关联规则与时序跟随强度,识别号码间的深层牵引力.
 
 {assoc_md}
 {follower_md}
 
 ## 📍 5. 位序森林 (Stream B: Positional Focus)
-> **分析逻辑**: 针对 20 个出球位序分别建立独立的随机森林模型，捕捉位置特有的物理惯性与序列规律。
+> **分析逻辑**: 针对 20 个出球位序分别建立独立的随机森林模型,捕捉位置特有的物理惯性与序列规律.
 
 ### 📋 5.1 位序全维度深度解析 (Full Positional Analysis)
 {pos_detail_md}
 
 ### 🗺️ 5.2 五象限能量分布 (Quadrants)
-> **分析逻辑**: 将 80 个号码划分为 5 个大区（每区 16 码），分析大尺度的号码能量聚集效应。
+> **分析逻辑**: 将 80 个号码划分为 5 个大区(每区 16 码),分析大尺度的号码能量聚集效应.
 {quad_md}
 
 ## 🗺️ 6. 概率分布热点 (Zone Analysis)
@@ -2525,27 +2572,27 @@ class SupremeManager:
 {select_md}
 
 ## 📉 10. 首席投资建议 (Investment Strategy)
-> **决策逻辑**: 基于 **凯利公式 (Kelly Criterion)** 计算最优仓位分配，平衡预期收益与破产风险。
+> **决策逻辑**: 基于 **凯利公式 (Kelly Criterion)** 计算最优仓位分配,平衡预期收益与破产风险.
 {kelly_md}
 
 ---
 {validation_md}
 
 ## 📈 11. 模型演化与特征贡献 (Evolution & Contribution)
-> **分析逻辑**: 通过 **SHAP/Permutation Importance** 原理量化各特征对预测结果的边际贡献，并追踪 **AutoTuner** 的融合权重演化路径。
+> **分析逻辑**: 通过 **SHAP/Permutation Importance** 原理量化各特征对预测结果的边际贡献,并追踪 **AutoTuner** 的融合权重演化路径.
 
 #### 📊 11.1 特征贡献度排行 (Top Feature Importance)
 {imp_md}
-> **结论**: 若 `Follower_Strength` 进入 Top 5，说明当前盘面受号码间时序吸引力影响显著。
+> **结论**: 若 `Follower_Strength` 进入 Top 5,说明当前盘面受号码间时序吸引力影响显著.
 
 #### 🔄 11.2 融合权重演化趋势 (Weight Evolution)
 {evolution_md}
-> **策略含义**: 权重向某一流派倾斜（如 TCN 或 GBDT）反映了市场近期的波动模式变化。
+> **策略含义**: 权重向某一流派倾斜(如 TCN 或 GBDT)反映了市场近期的波动模式变化.
 
 ## 🔬 12. 物理场深层特征 (Quant Insights)
 - **共振频率**: {result['resonance_count']} (双模型一致性指标)
 - **自适应窗口**: {regime['recommended_window']} (根据市场状态自动调节)
-- **特征维度**: 13 维深度特征 (新增跨期相关性、遗漏衰减、尾数热度)
+- **特征维度**: 13 维深度特征 (新增跨期相关性, 遗漏衰减, 尾数热度)
 - **物理场特征**: 包含 Hurst, Entropy, Volatility 等非线性指标
 - **Hurst 指数**: `{patterns.get('hurst', '0.5')}` (序列记忆强度)
 - **关联规则**: 二阶关联挖掘 (Top 15 组合)
